@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EvidenceGuard AI – NBA Accreditation Faculty Agent</title>
+  <style>
+    /* ── Reset & Base ─────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:       #0f1117;
+      --surface:  #1a1d27;
+      --surface2: #232736;
+      --border:   #2e3248;
+      --text:     #e8eaf0;
+      --muted:    #8b93b0;
+      --accent:   #4f8ef7;
+      --accent2:  #7c5cd8;
+      --success:  #22c55e;
+      --warning:  #f59e0b;
+      --error:    #ef4444;
+      --gold:     #f59e0b;
+      --radius:   12px;
+      --sidebar:  300px;
+    }
+    html, body { height: 100%; font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+                 background: var(--bg); color: var(--text); line-height: 1.6; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    button { cursor: pointer; font-family: inherit; }
+
+    /* ── Layout ───────────────────────────────────────────────────── */
+    .app-shell { display: flex; height: 100vh; overflow: hidden; }
+
+    /* ── Sidebar ──────────────────────────────────────────────────── */
+    .sidebar {
+      width: var(--sidebar); min-width: var(--sidebar); background: var(--surface);
+      border-right: 1px solid var(--border); display: flex; flex-direction: column;
+      overflow-y: auto; flex-shrink: 0;
+    }
+    .sidebar-logo { padding: 20px 16px 16px; border-bottom: 1px solid var(--border); }
+    .logo-badge {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: linear-gradient(135deg, #1a2a5e, #2e1a5e);
+      border: 1px solid #3a4080; border-radius: 10px; padding: 10px 14px; width: 100%;
+    }
+    .logo-icon { font-size: 26px; }
+    .logo-text { display: flex; flex-direction: column; }
+    .logo-title { font-size: 14px; font-weight: 700; color: var(--accent); line-height: 1.2; }
+    .logo-subtitle { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+    .sidebar-section { padding: 14px 12px; border-bottom: 1px solid var(--border); }
+    .sidebar-section-title {
+      font-size: 11px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px;
+    }
+
+    /* Criteria pills */
+    .criteria-list { display: flex; flex-direction: column; gap: 4px; }
+    .criteria-btn {
+      background: transparent; border: 1px solid var(--border); border-radius: 8px;
+      padding: 7px 10px; display: flex; align-items: center; justify-content: space-between;
+      font-size: 12px; color: var(--text); transition: all 0.15s; text-align: left;
+    }
+    .criteria-btn:hover { background: var(--surface2); border-color: var(--accent); color: var(--accent); }
+    .criteria-btn .crit-num { font-weight: 700; color: var(--accent); margin-right: 6px; min-width: 22px; }
+    .criteria-btn .crit-marks { font-size: 10px; color: var(--muted); margin-left: auto; white-space: nowrap; }
+
+    /* Quick questions */
+    .quick-list { display: flex; flex-direction: column; gap: 4px; }
+    .quick-btn {
+      background: transparent; border: 1px solid transparent; border-radius: 7px;
+      padding: 6px 8px; font-size: 12px; color: var(--muted); text-align: left;
+      transition: all 0.15s; line-height: 1.4;
+    }
+    .quick-btn:hover { background: var(--surface2); color: var(--text); border-color: var(--border); }
+
+    /* Mode tabs */
+    .mode-tabs { display: flex; gap: 4px; flex-wrap: wrap; padding: 10px; border-bottom: 1px solid var(--border); }
+    .mode-tab {
+      flex: 1; min-width: 50px; padding: 6px 4px; border-radius: 8px; font-size: 10px; font-weight: 600;
+      border: 1px solid var(--border); background: transparent; color: var(--muted);
+      transition: all 0.15s; text-align: center;
+    }
+    .mode-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .mode-tab:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Main area ────────────────────────────────────────────────── */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* Header */
+    .main-header {
+      padding: 14px 24px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--surface); flex-shrink: 0;
+    }
+    .header-title { font-size: 15px; font-weight: 600; }
+    .header-subtitle { font-size: 12px; color: var(--muted); }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success);
+                  display: inline-block; margin-right: 6px; }
+    .header-status { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+    .model-badge {
+      font-size: 10px; padding: 2px 8px; border-radius: 10px;
+      background: #4f8ef711; border: 1px solid #4f8ef744; color: var(--accent);
+    }
+
+    /* Chat area */
+    .chat-area { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
+
+    /* Welcome card */
+    .welcome-card {
+      background: linear-gradient(135deg, #1a2a5e22, #2e1a5e22);
+      border: 1px solid #3a408055; border-radius: var(--radius);
+      padding: 24px; text-align: center; max-width: 660px; margin: auto;
+    }
+    .welcome-icon { font-size: 52px; margin-bottom: 12px; }
+    .welcome-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+    .welcome-desc { font-size: 14px; color: var(--muted); line-height: 1.6; }
+    .welcome-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 16px; }
+    .welcome-chip {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 20px;
+      padding: 5px 12px; font-size: 12px; color: var(--muted); cursor: pointer; transition: all 0.15s;
+    }
+    .welcome-chip:hover { border-color: var(--accent); color: var(--accent); background: #4f8ef711; }
+
+    /* Messages */
+    .msg { display: flex; gap: 12px; max-width: 860px; }
+    .msg.user { flex-direction: row-reverse; margin-left: auto; }
+    .msg-avatar {
+      width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 16px;
+    }
+    .msg.user .msg-avatar { background: linear-gradient(135deg, var(--accent), var(--accent2)); }
+    .msg.agent .msg-avatar { background: linear-gradient(135deg, #1a2a5e, #2e1a5e); border: 1px solid #3a4080; }
+    .msg-bubble {
+      padding: 12px 16px; border-radius: var(--radius); font-size: 14px;
+      line-height: 1.65; max-width: calc(100% - 50px);
+    }
+    .msg.user .msg-bubble {
+      background: linear-gradient(135deg, #1a3a8f, #2e1a5e); border: 1px solid #3a4080;
+      border-bottom-right-radius: 4px;
+    }
+    .msg.agent .msg-bubble { background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+    .msg-bubble h3 { font-size: 14px; margin-top: 10px; margin-bottom: 4px; color: var(--accent); }
+    .msg-bubble h3:first-child { margin-top: 0; }
+    .msg-bubble strong { color: var(--accent); }
+    .msg-bubble p { margin-bottom: 8px; }
+    .msg-bubble p:last-child { margin-bottom: 0; }
+    .msg-bubble ul, .msg-bubble ol { padding-left: 18px; margin-bottom: 8px; }
+    .msg-bubble li { margin-bottom: 3px; }
+    .msg-bubble blockquote {
+      border-left: 3px solid var(--accent2); padding-left: 12px; margin: 10px 0;
+      color: var(--muted); font-size: 13px;
+    }
+    .msg-bubble code { background: #ffffff18; border-radius: 4px; padding: 1px 5px; font-size: 12px; font-family: monospace; }
+    .msg-bubble hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+
+    /* Source pills */
+    .source-section { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+    .source-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; font-weight: 600; text-transform: uppercase; }
+    .source-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+    .source-pill {
+      background: #4f8ef711; border: 1px solid #4f8ef755; border-radius: 20px;
+      padding: 3px 10px; font-size: 11px; color: var(--accent);
+    }
+    .rich-source-pill {
+      background: #22c55e11; border: 1px solid #22c55e44; border-radius: 6px;
+      padding: 4px 10px; font-size: 10px; color: #22c55e; font-family: monospace;
+      white-space: nowrap;
+    }
+    .criteria-pill {
+      background: #7c5cd811; border: 1px solid #7c5cd855; border-radius: 20px;
+      padding: 3px 10px; font-size: 11px; color: var(--accent2);
+    }
+    .confidence-badge {
+      display: inline-flex; align-items: center; gap: 4px; font-size: 11px;
+      border-radius: 20px; padding: 2px 8px;
+    }
+    .conf-high   { background: #22c55e22; color: var(--success); border: 1px solid #22c55e44; }
+    .conf-medium { background: #f59e0b22; color: var(--warning); border: 1px solid #f59e0b44; }
+    .conf-low    { background: #ef444422; color: var(--error);   border: 1px solid #ef444444; }
+    .conf-blocked{ background: #ef444422; color: var(--error);   border: 1px solid #ef444444; }
+
+    /* Typing indicator */
+    .typing { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
+    .typing-dots { display: flex; gap: 4px; }
+    .typing-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: bounce 1.2s infinite; }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-6px)} }
+
+    /* Evidence review mode */
+    .review-form {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 20px; max-width: 660px; margin: auto;
+    }
+    .review-form h3 { font-size: 15px; font-weight: 600; margin-bottom: 14px; }
+    .form-group { margin-bottom: 14px; }
+    .form-label { font-size: 13px; color: var(--muted); margin-bottom: 6px; display: block; }
+    .form-select, .form-input {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: 14px; font-family: inherit;
+    }
+    .form-select:focus, .form-input:focus { outline: none; border-color: var(--accent); }
+    .doc-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; min-height: 34px; }
+    .doc-tag {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 20px;
+      padding: 3px 10px; font-size: 12px; color: var(--text); display: flex; align-items: center; gap: 6px;
+    }
+    .doc-tag-remove { background: none; border: none; color: var(--muted); font-size: 14px; padding: 0; }
+    .doc-tag-remove:hover { color: var(--error); }
+
+    /* Retrieval diagnostics */
+    .diag-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 20px; max-width: 780px; margin: auto;
+    }
+    .diag-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+    .chunk-card {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+      padding: 12px 14px; margin-bottom: 10px;
+    }
+    .chunk-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+    .chunk-title { font-size: 13px; font-weight: 600; color: var(--accent); flex: 1; }
+    .score-bar-wrap { background: var(--border); border-radius: 4px; height: 6px; width: 100%; margin: 6px 0; overflow: hidden; }
+    .score-bar { background: var(--accent); height: 6px; border-radius: 4px; transition: width 0.4s; }
+    .chunk-preview { font-size: 12px; color: var(--muted); line-height: 1.5; }
+    .token-tag { background: var(--surface); border: 1px solid var(--border); border-radius: 4px;
+                 padding: 2px 6px; font-size: 11px; color: var(--muted); font-family: monospace; }
+    .kb-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: 12px; margin-bottom: 16px; }
+    .kb-stat-box {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+      padding: 14px; text-align: center;
+    }
+    .kb-stat-num { font-size: 26px; font-weight: 700; color: var(--accent); }
+    .kb-stat-label { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+    /* Input bar */
+    .input-area { padding: 16px 24px; border-top: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+    .input-bar {
+      display: flex; align-items: flex-end; gap: 10px; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px;
+      transition: border-color 0.15s;
+    }
+    .input-bar:focus-within { border-color: var(--accent); }
+    .input-textarea {
+      flex: 1; background: transparent; border: none; outline: none; color: var(--text);
+      font-size: 14px; font-family: inherit; resize: none; max-height: 140px; min-height: 22px; line-height: 1.5;
+    }
+    .input-textarea::placeholder { color: var(--muted); }
+    .send-btn {
+      background: var(--accent); border: none; border-radius: 8px; padding: 8px 14px;
+      color: #fff; font-size: 20px; transition: background 0.15s; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .send-btn:hover { background: #3a7de0; }
+    .send-btn:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+    .input-hint { font-size: 11px; color: var(--muted); margin-top: 8px; text-align: center; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* Tabs panel */
+    .panel { display: none; }
+    .panel.active { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+    /* Responsive */
+    @media (max-width: 700px) { .sidebar { display: none; } }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- ═══════════════════════ SIDEBAR ═══════════════════════════════ -->
+  <aside class="sidebar">
+
+    <div class="sidebar-logo">
+      <div class="logo-badge">
+        <span class="logo-icon">🛡️</span>
+        <div class="logo-text">
+          <span class="logo-title">EvidenceGuard AI</span>
+          <span class="logo-subtitle">NBA Accreditation Agent</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mode selector — 5 tabs -->
+    <div class="mode-tabs">
+      <button class="mode-tab active" onclick="switchMode('chat')"     id="tab-chat">💬 Chat</button>
+      <button class="mode-tab"        onclick="switchMode('review')"   id="tab-review">📋 Review</button>
+      <button class="mode-tab"        onclick="switchMode('criteria')" id="tab-criteria">📊 Criteria</button>
+      <button class="mode-tab"        onclick="switchMode('retrieve')" id="tab-retrieve">🔍 Retrieve</button>
+      <button class="mode-tab"        onclick="switchMode('kb')"       id="tab-kb">🗄️ KB</button>
+    </div>
+
+    <!-- NBA Criteria Quick Access -->
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">NBA Criteria (1000 Marks)</div>
+      <div class="criteria-list" id="criteria-list"></div>
+    </div>
+
+    <!-- Quick Questions -->
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Quick Questions</div>
+      <div class="quick-list" id="quick-list"></div>
+    </div>
+
+    <!-- About -->
+    <div class="sidebar-section" style="margin-top:auto">
+      <div class="sidebar-section-title">About</div>
+      <p style="font-size:11px;color:var(--muted);line-height:1.6">
+        Grounded in the official NBA Knowledge Base (May 2026 / GAPC v4.0).
+        IBM AICTE Agentic AI Project.
+      </p>
+    </div>
+
+  </aside>
+
+  <!-- ═══════════════════════ MAIN ══════════════════════════════════ -->
+  <main class="main">
+
+    <!-- Header -->
+    <header class="main-header">
+      <div>
+        <div class="header-title">🛡️ EvidenceGuard AI</div>
+        <div class="header-subtitle">NBA Accreditation Faculty Assistance Agent</div>
+      </div>
+      <div class="header-status">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-text">Connecting…</span>
+        <span class="model-badge" id="model-badge">IBM Granite</span>
+      </div>
+    </header>
+
+    <!-- ── CHAT PANEL ─────────────────────────────────────────────── -->
+    <div class="panel active" id="panel-chat">
+      <div class="chat-area" id="chat-area">
+        <div class="welcome-card" id="welcome-card">
+          <div class="welcome-icon">🛡️</div>
+          <div class="welcome-title">Welcome to EvidenceGuard AI</div>
+          <div class="welcome-desc">
+            Your AI-powered NBA Accreditation Faculty Assistant.<br>
+            Ask about any NBA criterion, document requirement, CO-PO mapping,<br>
+            SAR preparation, or accreditation process.
+          </div>
+          <div class="welcome-chips">
+            <span class="welcome-chip" onclick="askQuestion('What documents are needed for Criterion 5?')">📄 Criterion 5 Documents</span>
+            <span class="welcome-chip" onclick="askQuestion('Explain the CO-PO attainment formula')">📐 CO-PO Formula</span>
+            <span class="welcome-chip" onclick="askQuestion('What is the SFR limit for 6-year accreditation?')">👨‍🏫 SFR Requirement</span>
+            <span class="welcome-chip" onclick="askQuestion('What are the 11 Program Outcomes in GAPC v4.0?')">🎯 11 POs</span>
+            <span class="welcome-chip" onclick="askQuestion('What are common NBA SAR errors?')">⚠️ Common Errors</span>
+            <span class="welcome-chip" onclick="askQuestion('Explain Tier-I vs Tier-II differences')">⚖️ Tier Differences</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="input-area">
+        <div class="input-bar">
+          <textarea class="input-textarea" id="chat-input"
+            placeholder="Ask about NBA accreditation criteria, documents, CO-PO mapping, SAR preparation…"
+            rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+          <button class="send-btn" id="send-btn" onclick="sendMessage()" title="Send">➤</button>
+        </div>
+        <div class="input-hint">Press Enter to send · Shift+Enter for new line · Ask about any NBA criteria</div>
+      </div>
+    </div>
+
+    <!-- ── EVIDENCE REVIEW PANEL ──────────────────────────────────── -->
+    <div class="panel" id="panel-review">
+      <div class="chat-area">
+        <div class="review-form">
+          <h3>📋 Evidence Review Assistant</h3>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:16px">
+            Select a criterion and optionally list your submitted documents.
+            EvidenceGuard AI will show you what evidence is required and highlight common mistakes.
+          </p>
+          <div class="form-group">
+            <label class="form-label">Select NBA Criterion</label>
+            <select class="form-select" id="review-criterion">
+              <option value="">-- Select a criterion --</option>
+              <option value="Criterion 1 – Vision, Mission and PEOs">Criterion 1 – Vision, Mission &amp; PEOs</option>
+              <option value="Criterion 2 – Curriculum and Teaching-Learning">Criterion 2 – Curriculum &amp; Teaching-Learning</option>
+              <option value="Criterion 3 – Course Outcomes and Program Outcomes">Criterion 3 – COs &amp; POs / CO-PO Mapping</option>
+              <option value="Criterion 4 – Students Performance Evaluation">Criterion 4 – Students' Performance</option>
+              <option value="Criterion 5 – Faculty Information and Contributions">Criterion 5 – Faculty &amp; Contributions</option>
+              <option value="Criterion 6 – Facilities and Technical Support">Criterion 6 – Facilities &amp; Labs</option>
+              <option value="Criterion 7 – Continuous Improvement CQI">Criterion 7 – Continuous Improvement (CQI)</option>
+              <option value="Criterion 8 – First Year Academics">Criterion 8 – First Year Academics</option>
+              <option value="Criterion 9 – Student Support Systems">Criterion 9 – Student Support Systems</option>
+              <option value="Criterion 10 – Governance and Financial Resources">Criterion 10 – Governance &amp; Finance</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Documents you have already prepared (optional)</label>
+            <input class="form-input" id="doc-input" type="text"
+              placeholder="Type a document name and press Enter (e.g., Course Files)"
+              onkeydown="addDocTag(event)" />
+            <div class="doc-tags" id="doc-tags"></div>
+          </div>
+          <button
+            style="background:var(--accent);border:none;border-radius:8px;padding:10px 24px;
+                   color:#fff;font-size:14px;font-weight:600;transition:background 0.15s;margin-top:4px"
+            onmouseover="this.style.background='#3a7de0'" onmouseout="this.style.background='var(--accent)'"
+            onclick="runEvidenceReview()">
+            🔍 Review Evidence Requirements
+          </button>
+          <div id="review-output" style="margin-top:20px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CRITERIA TABLE PANEL ───────────────────────────────────── -->
+    <div class="panel" id="panel-criteria">
+      <div class="chat-area">
+        <div style="max-width:700px;margin:auto">
+          <h2 style="font-size:18px;margin-bottom:16px">📊 NBA 10-Criteria Overview (1000 Marks)</h2>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+            <table id="criteria-table" style="width:100%;border-collapse:collapse;font-size:13px">
+              <thead>
+                <tr style="background:var(--surface2);text-align:left">
+                  <th style="padding:12px 16px;border-bottom:1px solid var(--border)">#</th>
+                  <th style="padding:12px 16px;border-bottom:1px solid var(--border)">Criterion</th>
+                  <th style="padding:12px 16px;border-bottom:1px solid var(--border);text-align:center">Tier-I<br><span style="font-size:10px;font-weight:400;color:var(--muted)">(Autonomous)</span></th>
+                  <th style="padding:12px 16px;border-bottom:1px solid var(--border);text-align:center">Tier-II<br><span style="font-size:10px;font-weight:400;color:var(--muted)">(Affiliated)</span></th>
+                  <th style="padding:12px 16px;border-bottom:1px solid var(--border);text-align:center">Action</th>
+                </tr>
+              </thead>
+              <tbody id="criteria-tbody"></tbody>
+              <tfoot>
+                <tr style="background:var(--surface2);font-weight:700">
+                  <td colspan="2" style="padding:12px 16px;border-top:1px solid var(--border)">TOTAL</td>
+                  <td style="padding:12px 16px;border-top:1px solid var(--border);text-align:center;color:var(--accent)">1000</td>
+                  <td style="padding:12px 16px;border-top:1px solid var(--border);text-align:center;color:var(--accent)">1000</td>
+                  <td style="padding:12px 16px;border-top:1px solid var(--border)"></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <p style="font-size:12px;color:var(--muted);margin-top:12px">
+            Source: NBA SAR Manual, May 2026 Edition / GAPC v4.0. Click "Ask" to get detailed guidance.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── RETRIEVAL DIAGNOSTICS PANEL ───────────────────────────── -->
+    <div class="panel" id="panel-retrieve">
+      <div class="chat-area">
+        <div class="diag-card">
+          <h3>🔍 RAG Retrieval Diagnostics</h3>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:16px">
+            Enter any question to see exactly which knowledge base chunks are retrieved,
+            their relevance scores, and how the RAG pipeline selects them.
+          </p>
+
+          <div style="display:flex;gap:8px;margin-bottom:16px">
+            <input id="diag-input" class="form-input" style="flex:1"
+              placeholder="e.g., What documents are needed for Criterion 5?"
+              onkeydown="if(event.key==='Enter') runRetrieval()" />
+            <select id="diag-topk" class="form-select" style="width:80px">
+              <option value="3">Top 3</option>
+              <option value="5" selected>Top 5</option>
+              <option value="8">Top 8</option>
+            </select>
+            <button onclick="runRetrieval()"
+              style="background:var(--accent);border:none;border-radius:8px;padding:9px 18px;
+                     color:#fff;font-size:13px;font-weight:600;white-space:nowrap">
+              Retrieve
+            </button>
+          </div>
+
+          <!-- Quick test questions -->
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">
+            <span style="font-size:11px;color:var(--muted);align-self:center">Try:</span>
+            <button class="welcome-chip" onclick="diagAsk('How to prepare NBA SAR?')">SAR preparation</button>
+            <button class="welcome-chip" onclick="diagAsk('CO-PO mapping scale and formula')">CO-PO mapping</button>
+            <button class="welcome-chip" onclick="diagAsk('Criterion 5 faculty documents')">Criterion 5 docs</button>
+            <button class="welcome-chip" onclick="diagAsk('What evidence is missing?')">Evidence gap</button>
+            <button class="welcome-chip" onclick="diagAsk('Tier-I vs Tier-II differences')">Tier differences</button>
+          </div>
+
+          <div id="diag-output"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── KNOWLEDGE BASE STATS PANEL ────────────────────────────── -->
+    <div class="panel" id="panel-kb">
+      <div class="chat-area">
+        <div class="diag-card">
+          <h3>🗄️ Knowledge Base Inspector</h3>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:16px">
+            Live view of all knowledge chunks loaded in the RAG vector store.
+          </p>
+
+          <div id="kb-stats-output">
+            <div class="typing" style="padding:10px 0">
+              <span>Loading knowledge base stats…</span>
+              <div class="typing-dots"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ══════════════════════════ JAVASCRIPT ══════════════════════════════ -->
+<script>
+const API = "";
+
+// ── Markdown renderer ───────────────────────────────────────────────────
+function renderMarkdown(text) {
+  return text
+    .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^---+$/gm, '<hr>')
+    .replace(/^\s*[-•]\s+(.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+    .replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>')
+    .split('\n\n').map(b => b.trim()).filter(Boolean)
+    .map(b => b.startsWith('<') ? b : '<p>' + b.replace(/\n/g, '<br>') + '</p>')
+    .join('');
+}
+
+// ── Health check ────────────────────────────────────────────────────────
+async function checkHealth() {
+  try {
+    const r    = await fetch(`${API}/api/health`);
+    const data = await r.json();
+    if (data.status === 'ok') {
+      document.getElementById('status-dot').style.background = 'var(--success)';
+      document.getElementById('status-text').textContent = 'Agent Ready';
+
+      const g = data.ibm_granite || {};
+      const badge = document.getElementById('model-badge');
+      if (g.connected) {
+        badge.textContent = 'IBM Granite ✓';
+        badge.style.background = '#22c55e22';
+        badge.style.borderColor = '#22c55e44';
+        badge.style.color = 'var(--success)';
+      } else {
+        badge.textContent = 'TF-IDF mode';
+        badge.style.background = '#f59e0b11';
+        badge.style.borderColor = '#f59e0b44';
+        badge.style.color = 'var(--warning)';
+      }
+    }
+  } catch {
+    document.getElementById('status-dot').style.background = 'var(--error)';
+    document.getElementById('status-text').textContent = 'Server Offline';
+  }
+}
+
+// ── Load sidebar criteria ───────────────────────────────────────────────
+async function loadCriteria() {
+  try {
+    const r = await fetch(`${API}/api/criteria`);
+    const data = await r.json();
+    if (!data.success) return;
+
+    const list  = document.getElementById('criteria-list');
+    const tbody = document.getElementById('criteria-tbody');
+    list.innerHTML = ''; tbody.innerHTML = '';
+
+    data.criteria.forEach(c => {
+      const btn = document.createElement('button');
+      btn.className = 'criteria-btn';
+      btn.innerHTML = `<span class="crit-num">C${c.id}</span><span style="flex:1">${c.name}</span><span class="crit-marks">${c.marks_t1}/${c.marks_t2}</span>`;
+      btn.onclick = () => askQuestion(`Explain Criterion ${c.id} – ${c.name} and what documents are required`);
+      list.appendChild(btn);
+
+      const tr = document.createElement('tr');
+      const diff = c.marks_t1 !== c.marks_t2;
+      tr.innerHTML = `
+        <td style="padding:10px 16px;border-bottom:1px solid var(--border);font-weight:700;color:var(--accent)">${c.id}</td>
+        <td style="padding:10px 16px;border-bottom:1px solid var(--border)">${c.name}</td>
+        <td style="padding:10px 16px;border-bottom:1px solid var(--border);text-align:center;font-weight:600;${diff?'color:var(--accent)':''}">${c.marks_t1}</td>
+        <td style="padding:10px 16px;border-bottom:1px solid var(--border);text-align:center;font-weight:600;${diff?'color:var(--accent2)':''}">${c.marks_t2}</td>
+        <td style="padding:10px 16px;border-bottom:1px solid var(--border);text-align:center">
+          <button onclick="askQuestionAndSwitch('What documents are required for Criterion ${c.id} ${c.name}?')"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;
+                   padding:4px 10px;font-size:11px;color:var(--accent);cursor:pointer">Ask</button>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+  } catch(e) { console.error('Failed to load criteria', e); }
+}
+
+// ── Load quick questions ────────────────────────────────────────────────
+async function loadQuickQuestions() {
+  try {
+    const r = await fetch(`${API}/api/quick-questions`);
+    const data = await r.json();
+    if (!data.success) return;
+    const list = document.getElementById('quick-list');
+    list.innerHTML = '';
+    data.questions.forEach(q => {
+      const btn = document.createElement('button');
+      btn.className = 'quick-btn';
+      btn.textContent = q;
+      btn.onclick = () => askQuestion(q);
+      list.appendChild(btn);
+    });
+  } catch(e) { console.error('Failed to load quick questions', e); }
+}
+
+// ── Mode switch ─────────────────────────────────────────────────────────
+function switchMode(mode) {
+  ['chat','review','criteria','retrieve','kb'].forEach(m => {
+    document.getElementById(`panel-${m}`).classList.toggle('active', m === mode);
+    document.getElementById(`tab-${m}`).classList.toggle('active', m === mode);
+  });
+  if (mode === 'kb') loadKBStats();
+}
+
+function askQuestionAndSwitch(q) { switchMode('chat'); askQuestion(q); }
+
+// ── Chat logic ──────────────────────────────────────────────────────────
+let isLoading = false;
+
+function appendMessage(role, content, meta = null) {
+  const area    = document.getElementById('chat-area');
+  const welcome = document.getElementById('welcome-card');
+  if (welcome) welcome.remove();
+
+  const msg    = document.createElement('div');
+  msg.className = `msg ${role}`;
+
+  const avatar = document.createElement('div');
+  avatar.className = 'msg-avatar';
+  avatar.textContent = role === 'user' ? '👤' : '🛡️';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  bubble.innerHTML = renderMarkdown(content);
+
+  if (meta && role === 'agent') {
+    const metaDiv = document.createElement('div');
+    metaDiv.className = 'source-section';
+
+    // Confidence + retrieved count + model badge
+    if (meta.confidence && meta.confidence !== 'blocked') {
+      const confClass = {high:'conf-high',medium:'conf-medium',low:'conf-low'}[meta.confidence] || 'conf-low';
+      const modelText = meta.model && meta.model !== 'tfidf_local'
+        ? `<span class="model-badge" style="margin-left:6px">${meta.model}</span>` : '';
+      metaDiv.innerHTML += `<div style="margin-bottom:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <span class="confidence-badge ${confClass}">● ${meta.confidence.toUpperCase()}</span>
+        ${meta.retrieved_count ? `<span style="font-size:11px;color:var(--muted)">${meta.retrieved_count} chunk(s) retrieved</span>` : ''}
+        ${modelText}
+      </div>`;
+    }
+
+    // Criteria
+    if (meta.criteria && meta.criteria.length > 0) {
+      metaDiv.innerHTML += `<div class="source-label">Relevant Criteria</div><div class="source-pills">` +
+        meta.criteria.map(c => `<span class="criteria-pill">${c}</span>`).join('') + `</div>`;
+    }
+
+    // Rich sources (detailed citations with chunk ID and score)
+    if (meta.rich_sources && meta.rich_sources.length > 0) {
+      metaDiv.innerHTML += `<div class="source-label" style="margin-top:8px">📚 Citations</div>
+        <div style="display:flex;flex-direction:column;gap:4px">` +
+        meta.rich_sources.map(s => `<span class="rich-source-pill">${s}</span>`).join('') +
+        `</div>`;
+    } else if (meta.sources && meta.sources.length > 0) {
+      // Fallback to plain sources
+      metaDiv.innerHTML += `<div class="source-label" style="margin-top:8px">Sources</div><div class="source-pills">` +
+        meta.sources.map(s => `<span class="source-pill">📖 ${s}</span>`).join('') + `</div>`;
+    }
+
+    bubble.appendChild(metaDiv);
+  }
+
+  msg.appendChild(avatar);
+  msg.appendChild(bubble);
+  area.appendChild(msg);
+  area.scrollTop = area.scrollHeight;
+  return msg;
+}
+
+function appendTyping() {
+  const area    = document.getElementById('chat-area');
+  const welcome = document.getElementById('welcome-card');
+  if (welcome) welcome.remove();
+
+  const msg    = document.createElement('div');
+  msg.className = 'msg agent'; msg.id = 'typing-indicator';
+
+  const avatar = document.createElement('div');
+  avatar.className = 'msg-avatar'; avatar.textContent = '🛡️';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  bubble.innerHTML = `<div class="typing"><span>EvidenceGuard AI is analyzing…</span>
+    <div class="typing-dots"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div>`;
+
+  msg.appendChild(avatar); msg.appendChild(bubble);
+  area.appendChild(msg); area.scrollTop = area.scrollHeight;
+}
+
+function removeTyping() {
+  const el = document.getElementById('typing-indicator');
+  if (el) el.remove();
+}
+
+async function sendMessage() {
+  if (isLoading) return;
+  const input    = document.getElementById('chat-input');
+  const question = input.value.trim();
+  if (!question) return;
+
+  input.value = ''; input.style.height = 'auto';
+  isLoading = true;
+  document.getElementById('send-btn').disabled = true;
+  appendMessage('user', question);
+  appendTyping();
+
+  try {
+    const res  = await fetch(`${API}/api/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, top_k: 3 })
+    });
+    const data = await res.json();
+    removeTyping();
+
+    if (data.success) {
+      appendMessage('agent', data.answer, {
+        sources:         data.sources,
+        rich_sources:    data.rich_sources,
+        criteria:        data.criteria,
+        confidence:      data.confidence,
+        retrieved_count: data.retrieved_count,
+        model:           data.model,
+      });
+    } else if (data.blocked) {
+      appendMessage('agent', data.answer, { confidence: 'blocked' });
+    } else {
+      appendMessage('agent', '⚠️ **Error:** ' + (data.error || 'Unknown error. Please try again.'));
+    }
+  } catch(e) {
+    removeTyping();
+    appendMessage('agent', '🔴 **Connection Error:** Could not reach the EvidenceGuard AI server. Please make sure the backend is running on port 5000 and refresh the page.');
+  }
+
+  isLoading = false;
+  document.getElementById('send-btn').disabled = false;
+  input.focus();
+}
+
+function askQuestion(q) {
+  switchMode('chat');
+  document.getElementById('chat-input').value = q;
+  sendMessage();
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 140) + 'px';
+}
+
+// ── Evidence Review ─────────────────────────────────────────────────────
+let reviewDocs = [];
+
+function addDocTag(e) {
+  if (e.key !== 'Enter') return;
+  const input = document.getElementById('doc-input');
+  const val   = input.value.trim();
+  if (!val) return;
+  reviewDocs.push(val); input.value = '';
+  renderDocTags();
+}
+
+function removeDoc(idx) { reviewDocs.splice(idx, 1); renderDocTags(); }
+
+function renderDocTags() {
+  document.getElementById('doc-tags').innerHTML = reviewDocs
+    .map((d, i) => `<span class="doc-tag">${d}<button class="doc-tag-remove" onclick="removeDoc(${i})">✕</button></span>`)
+    .join('');
+}
+
+async function runEvidenceReview() {
+  const criterion = document.getElementById('review-criterion').value;
+  if (!criterion) { alert('Please select a criterion first.'); return; }
+  const output = document.getElementById('review-output');
+  output.innerHTML = '<div class="typing" style="padding:10px 0"><span>Analyzing evidence requirements…</span><div class="typing-dots"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div>';
+
+  try {
+    const res  = await fetch(`${API}/api/evidence-review`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ criterion, submitted_docs: reviewDocs })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      let sourcesHtml = '';
+      if (data.sources && data.sources.length) {
+        sourcesHtml = `<div class="source-section"><div class="source-label">Sources</div><div class="source-pills">` +
+          data.sources.map(s => `<span class="source-pill">📖 ${s}</span>`).join('') + `</div></div>`;
+      }
+      output.innerHTML = `<div class="msg-bubble" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:16px">${renderMarkdown(data.answer)}${sourcesHtml}</div>`;
+    } else {
+      output.innerHTML = `<p style="color:var(--error)">⚠️ ${data.error || 'Error running review.'}</p>`;
+    }
+  } catch(e) {
+    output.innerHTML = `<p style="color:var(--error)">🔴 Connection error. Please ensure the server is running.</p>`;
+  }
+}
+
+// ── Retrieval Diagnostics ───────────────────────────────────────────────
+function diagAsk(q) {
+  document.getElementById('diag-input').value = q;
+  runRetrieval();
+}
+
+async function runRetrieval() {
+  const question = document.getElementById('diag-input').value.trim();
+  const top_k    = parseInt(document.getElementById('diag-topk').value);
+  if (!question) { alert('Enter a question first.'); return; }
+
+  const out = document.getElementById('diag-output');
+  out.innerHTML = '<div class="typing" style="padding:10px 0"><span>Retrieving chunks…</span><div class="typing-dots"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div>';
+
+  try {
+    const res  = await fetch(`${API}/api/retrieve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, top_k })
+    });
+    const data = await res.json();
+
+    if (!data.success) {
+      out.innerHTML = `<p style="color:var(--error)">⚠️ ${data.reason || data.error}</p>`;
+      return;
+    }
+
+    // Query tokens
+    const tokenHtml = data.query_tokens && data.query_tokens.length
+      ? `<div style="margin-bottom:12px"><span style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Query tokens</span><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">${
+          data.query_tokens.map(t => `<span class="token-tag">${t}</span>`).join('')
+        }</div></div>`
+      : '';
+
+    // Chunk cards
+    const chunks = data.chunks || [];
+    const maxScore = chunks.length ? Math.max(...chunks.map(c => c.relevance_score), 0.001) : 0.001;
+
+    const chunkHtml = chunks.length === 0
+      ? `<p style="color:var(--muted)">No chunks matched above the minimum score threshold.</p>`
+      : chunks.map((c, i) => {
+          const pct   = Math.round((c.relevance_score / maxScore) * 100);
+          const confC = c.confidence_label === 'high' ? 'var(--success)' : c.confidence_label === 'medium' ? 'var(--warning)' : 'var(--error)';
+          return `<div class="chunk-card">
+            <div class="chunk-header">
+              <span style="font-size:12px;font-weight:700;color:${confC}">[${i+1}]</span>
+              <span class="chunk-title">${c.title}</span>
+              <span style="font-size:11px;color:var(--muted)">score: <strong style="color:${confC}">${c.relevance_score.toFixed(4)}</strong></span>
+              <span class="confidence-badge ${c.confidence_label==='high'?'conf-high':c.confidence_label==='medium'?'conf-medium':'conf-low'}">${c.confidence_label.toUpperCase()}</span>
+            </div>
+            <div class="score-bar-wrap"><div class="score-bar" style="width:${pct}%;background:${confC}"></div></div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0">
+              <span class="source-pill">📖 ${c.source}</span>
+              <span class="criteria-pill">${c.criteria}</span>
+              <span class="token-tag">id: ${c.id}</span>
+            </div>
+            <div class="chunk-preview">${c.content_preview}</div>
+          </div>`;
+        }).join('');
+
+    out.innerHTML = `
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px">
+        <strong style="color:var(--accent)">${data.retrieved_count}</strong> chunk(s) retrieved for:
+        <em style="color:var(--muted)">"${data.query}"</em>
+      </div>
+      ${tokenHtml}
+      ${chunkHtml}`;
+
+  } catch(e) {
+    out.innerHTML = `<p style="color:var(--error)">🔴 Connection error. Is the server running?</p>`;
+  }
+}
+
+// ── Knowledge Base Stats ────────────────────────────────────────────────
+let kbLoaded = false;
+async function loadKBStats() {
+  if (kbLoaded) return;
+  const out = document.getElementById('kb-stats-output');
+  try {
+    const r    = await fetch(`${API}/api/kb-stats`);
+    const data = await r.json();
+    if (!data.success) { out.innerHTML = '<p style="color:var(--error)">Failed to load KB stats.</p>'; return; }
+
+    const secRows = Object.entries(data.sections)
+      .map(([s, n]) => `<tr><td style="padding:6px 10px;border-bottom:1px solid var(--border)">${s}</td>
+                        <td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:right;color:var(--accent)">${n}</td></tr>`)
+      .join('');
+
+    const critRows = Object.entries(data.criteria_dist)
+      .map(([c, n]) => `<tr><td style="padding:6px 10px;border-bottom:1px solid var(--border)">${c}</td>
+                        <td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:right;color:var(--accent2)">${n}</td></tr>`)
+      .join('');
+
+    const chunkList = (data.chunks || []).map((c, i) =>
+      `<tr style="${i%2===0?'':'background:var(--surface2)'}">
+        <td style="padding:5px 10px;border-bottom:1px solid var(--border);font-family:monospace;font-size:11px;color:var(--muted)">${c.id}</td>
+        <td style="padding:5px 10px;border-bottom:1px solid var(--border);font-size:12px">${c.title}</td>
+        <td style="padding:5px 10px;border-bottom:1px solid var(--border);font-size:11px"><span class="criteria-pill">${c.criteria}</span></td>
+      </tr>`).join('');
+
+    out.innerHTML = `
+      <div class="kb-stat-grid">
+        <div class="kb-stat-box"><div class="kb-stat-num">${data.total_chunks}</div><div class="kb-stat-label">Total Chunks</div></div>
+        <div class="kb-stat-box"><div class="kb-stat-num">${data.vocab_size}</div><div class="kb-stat-label">Vocab Terms</div></div>
+        <div class="kb-stat-box"><div class="kb-stat-num">${Object.keys(data.sections).length}</div><div class="kb-stat-label">Sections</div></div>
+        <div class="kb-stat-box"><div class="kb-stat-num">${Object.keys(data.criteria_dist).length}</div><div class="kb-stat-label">Criteria Groups</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+        <div>
+          <div class="sidebar-section-title" style="margin-bottom:8px">Sections</div>
+          <table style="width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;font-size:12px">${secRows}</table>
+        </div>
+        <div>
+          <div class="sidebar-section-title" style="margin-bottom:8px">Criteria Distribution</div>
+          <table style="width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;font-size:12px">${critRows}</table>
+        </div>
+      </div>
+
+      <div class="sidebar-section-title" style="margin-bottom:8px">All ${data.total_chunks} Chunks</div>
+      <div style="overflow:hidden;border:1px solid var(--border);border-radius:8px">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="background:var(--surface2)">
+            <th style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;font-size:11px;color:var(--muted)">ID</th>
+            <th style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;font-size:11px;color:var(--muted)">Title</th>
+            <th style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;font-size:11px;color:var(--muted)">Criteria</th>
+          </tr></thead>
+          <tbody>${chunkList}</tbody>
+        </table>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-top:12px">
+        RAG Engine: ${data.rag_engine} · KB Version: ${data.kb_version}
+      </p>`;
+    kbLoaded = true;
+  } catch(e) {
+    out.innerHTML = `<p style="color:var(--error)">🔴 Connection error. Is the server running?</p>`;
+  }
+}
+
+// ── Init ────────────────────────────────────────────────────────────────
+checkHealth();
+loadCriteria();
+loadQuickQuestions();
+</script>
+</body>
+</html>

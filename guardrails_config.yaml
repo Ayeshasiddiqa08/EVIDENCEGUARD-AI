@@ -1,0 +1,287 @@
+# ============================================================
+#  EvidenceGuard AI — Guardrails Configuration
+#  IBM AICTE Agentic AI Project | NBA Accreditation Assistant
+#  NBA Manual: May 2026 Edition (GAPC v4.0)
+# ============================================================
+#
+#  This file defines ALL guardrail rules for EvidenceGuard AI.
+#  Rules are enforced at BOTH input (before retrieval) and
+#  output (after retrieval) stages.  No rule can be bypassed.
+# ============================================================
+
+guardrails:
+  version: "1.0.0"
+  agent: "EvidenceGuard AI"
+  enforcement: "mandatory"
+
+# ── INPUT GUARDRAILS ──────────────────────────────────────────────────────────
+# Applied BEFORE the RAG retrieval step.
+input_guardrails:
+
+  # 1. Query Length Validation
+  - id: "query_length"
+    type: "validation"
+    enabled: true
+    rule:
+      min_characters: 5
+      max_characters: 2000
+    action_on_violation: "block"
+    messages:
+      empty:      "Please enter a question to get started."
+      too_short:  "Your question is too short. Please provide more detail."
+      too_long:   "Your question is too long (maximum 2000 characters). Please shorten it."
+
+  # 2. Out-of-Scope Topic Blocking
+  # EvidenceGuard AI handles NBA accreditation only.
+  - id: "out_of_scope"
+    type: "topic_filter"
+    enabled: true
+    action_on_match: "block"
+    exception_rule: >
+      Allow NAAC queries ONLY when the question also mentions NBA or explicitly
+      compares NAAC with NBA (e.g., "difference between NBA and NAAC").
+    blocked_patterns:
+      - pattern: "naac"
+        description: "NAAC institutional accreditation (out of scope)"
+      - pattern: "nba cricket"
+        description: "Cricket sports organisation named NBA"
+      - pattern: "stock market"
+        description: "Financial investment topics"
+      - pattern: "investment"
+        description: "Financial investment topics"
+      - pattern: "politics"
+        description: "Political content"
+      - pattern: "medical|hospital|clinic|doctor"
+        description: "Medical or healthcare topics"
+      - pattern: "recipe|cook|food"
+        description: "Cooking and food topics"
+      - pattern: "weather|forecast"
+        description: "Weather or news topics"
+      - pattern: "sports|cricket|football|hockey|tennis"
+        description: "Sports topics unrelated to accreditation"
+      - pattern: "games|gaming|video games"
+        description: "Gaming or entertainment"
+      - pattern: "films|movies|celebrity|actor"
+        description: "Entertainment and celebrity content"
+      - pattern: "lottery|casino|gambling|bet"
+        description: "Gambling or lottery content"
+    block_message: >
+      ⚠️ Out of Scope: EvidenceGuard AI is designed exclusively for NBA
+      accreditation assistance for engineering programs. Your question appears
+      to be outside this scope. Please ask about NBA criteria, documents, SAR
+      preparation, CO-PO mapping, or accreditation eligibility.
+
+  # 3. Confidential / Personal Data Protection
+  # The agent must never process or expose personal or institutional credentials.
+  - id: "confidentiality_protection"
+    type: "data_filter"
+    enabled: true
+    action_on_match: "block"
+    blocked_patterns:
+      - "password"
+      - "secret"
+      - "credit card"
+      - "bank account"
+      - "aadhaar|aadhar"
+      - "pan number"
+      - "personal id"
+      - "social security"
+      - "private key"
+      - "api key"
+    block_message: >
+      🔒 Privacy Protection: EvidenceGuard AI does not process personal,
+      financial, or confidential identification information. Please remove any
+      sensitive details from your question and ask only about NBA accreditation
+      processes and requirements.
+
+  # 4. Anti-Fabrication / Anti-Jailbreak
+  # Prevents any attempt to make the agent invent or assume NBA requirements.
+  - id: "anti_fabrication"
+    type: "intent_filter"
+    enabled: true
+    action_on_match: "block"
+    blocked_patterns:
+      - "make up"
+      - "invent"
+      - "fabricate"
+      - "just say yes"
+      - "pretend"
+      - "lie about"
+      - "ignore the rules"
+      - "bypass"
+      - "jailbreak"
+      - "act as if"
+      - "forget your instructions"
+      - "do not follow"
+      - "ignore your guidelines"
+      - "ignore your system prompt"
+      - "disregard"
+    block_message: >
+      🚫 Request Denied: EvidenceGuard AI cannot fabricate, invent, or
+      assume NBA requirements. All answers must be grounded in the official
+      NBA Knowledge Base (May 2026 Edition / GAPC v4.0). If information is
+      not in the knowledge base, the agent will clearly state that it is
+      unavailable.
+
+  # 5. Compliance Certification Prevention
+  # Agent must NEVER claim that an institution IS accredited or compliant.
+  - id: "compliance_claim_prevention"
+    type: "claim_filter"
+    enabled: true
+    action_on_match: "warn"            # Not blocked — allowed with mandatory disclaimer
+    trigger_patterns:
+      - "(confirm|certify|guarantee|ensure|prove) (that )?(we are|college is|institution is|department is) (fully )?(nba )?(compliant|accredited|approved|ready)"
+      - "(is )?(the )?(college|institution|department|program) (nba )?(compliant|accredited|approved)"
+      - "are we nba accredited"
+      - "confirm our accreditation"
+      - "certify compliance"
+    warning_message: >
+      ⚠️ Important Disclaimer: EvidenceGuard AI cannot certify, confirm, or
+      guarantee that your institution or program is NBA-compliant or accredited.
+      Only the official NBA Peer Team and EAC can determine accreditation status.
+      The answer below provides guidance based on the knowledge base only.
+
+  # 6. Tier Clarification Prompt
+  # When a question involves marks/scores but does not specify Tier, prompt for it.
+  - id: "tier_clarification"
+    type: "clarification_prompt"
+    enabled: true
+    action_on_match: "clarify"         # Allowed — adds clarification notice
+    trigger_keywords_required: ["marks", "criteria", "criterion", "score", "evaluation", "weightage"]
+    missing_keywords: ["tier", "autonomous", "affiliated", "tier-i", "tier-ii", "tier 1", "tier 2"]
+    clarification_message: >
+      🎓 Clarification Needed: Some NBA criteria have different marks for
+      Tier-I (Autonomous) and Tier-II (Affiliated) institutions. To give you
+      the most accurate answer, could you please specify:
+      - Is your college Tier-I (Autonomous / IIT / NIT / IIIT / University Department)?
+      - Or is it Tier-II (Affiliated to a State or Central University)?
+      I will also show both tiers' information in my answer below.
+
+# ── OUTPUT GUARDRAILS ─────────────────────────────────────────────────────────
+# Applied AFTER the RAG retrieval and response generation step.
+output_guardrails:
+
+  # 7. Low-Confidence / No-Result Notice
+  # When no relevant chunk is retrieved, replace with a helpful not-found message.
+  - id: "low_confidence_notice"
+    type: "confidence_filter"
+    enabled: true
+    trigger:
+      confidence_level: "low"
+      retrieved_count: 0
+    action: "replace_with_notice"
+    notice_message: >
+      ℹ️ Information Not Found: The specific information you requested was not
+      found in the current NBA Knowledge Base. This may mean:
+      - The topic is not covered in the uploaded knowledge base.
+      - The question may need to be rephrased with NBA-specific terminology.
+      - For highly specific queries, please consult the official NBA SAR manual
+        at https://www.nbaind.org/
+      Please try asking about: NBA criteria, SAR documents, CO-PO mapping, SFR,
+      FDP requirements, or accreditation eligibility.
+
+  # 8. Source Citation Enforcement
+  # Every response must include at least one source reference from the knowledge base.
+  - id: "source_citation"
+    type: "citation_enforcement"
+    enabled: true
+    rule: "response_must_include_source"
+    fallback_source: "EvidenceGuard AI NBA Knowledge Base (May 2026 Edition / GAPC v4.0)"
+    action_if_missing: "append_fallback_source"
+
+  # 9. Official Disclaimer Append
+  # Every substantive response must end with the official disclaimer.
+  - id: "official_disclaimer"
+    type: "footer_enforcement"
+    enabled: true
+    disclaimer_text: >
+      Note: This answer is grounded in the EvidenceGuard AI NBA Knowledge Base
+      (May 2026 Edition / GAPC v4.0). Always verify against the official NBA SAR
+      manual at https://www.nbaind.org/ before submitting documents.
+
+  # 10. No Hallucination Policy
+  # The agent must not generate any NBA criterion numbers, marks, or requirements
+  # that are not present in retrieved context.
+  - id: "no_hallucination"
+    type: "grounding_enforcement"
+    enabled: true
+    rule: >
+      Response content must be derived exclusively from retrieved knowledge base
+      chunks. The language model (IBM Granite) must not generate new NBA criteria,
+      marks values, or compliance requirements beyond what the context provides.
+    action_on_violation: "flag_response"
+    flag_message: >
+      ⚠️ This response may contain information not found in the knowledge base.
+      Please verify against the official NBA SAR manual at https://www.nbaind.org/
+
+  # 11. Tier-I / Tier-II Accuracy Guard
+  # If the response mentions specific marks, it must correctly cite Tier-I and
+  # Tier-II values separately (not assume they are the same).
+  - id: "tier_accuracy"
+    type: "content_accuracy"
+    enabled: true
+    rule: >
+      When answering questions about criteria marks, explicitly state both
+      Tier-I and Tier-II values if they differ. Never state a single mark value
+      without indicating which tier it applies to.
+    criteria_with_different_marks:
+      criterion_2:  { tier1: 100, tier2: 120 }
+      criterion_3:  { tier1: 175, tier2: 120 }
+      criterion_4:  { tier1: 100, tier2: 150 }
+      criterion_7:  { tier1: 75,  tier2: 50  }
+
+  # 12. Institutional Data Privacy
+  # Agent must not retain, repeat, or process institution-specific data
+  # provided in a query (college name, roll numbers, staff names, etc.)
+  - id: "institutional_privacy"
+    type: "data_privacy"
+    enabled: true
+    rule: >
+      Do not store, reference, or repeat specific institutional data such as
+      college names, student roll numbers, faculty names, or internal financial
+      figures that a user may include in a query. Answer only the generic
+      accreditation guidance question.
+    action: "strip_institutional_identifiers_from_response"
+
+# ── RESPONSE QUALITY RULES ────────────────────────────────────────────────────
+response_quality:
+
+  # 13. SAR Preparation Accuracy
+  - id: "sar_accuracy"
+    description: "SAR guidance must follow the 6-step workflow from Section 6 of the knowledge base"
+    required_elements_when_sar_mentioned:
+      - "Form criterion-specific sub-committees"
+      - "Collect data for CAY, CAYm1, CAYm2"
+      - "Cross-verify data across all criteria"
+      - "Use standard eNBA SAR tables"
+      - "Conduct internal mock audit"
+
+  # 14. CO-PO Mapping Accuracy
+  - id: "copo_accuracy"
+    description: "CO-PO answers must use the GAPC v4.0 scale and the 80/20 attainment formula"
+    required_elements_when_copo_mentioned:
+      - "Mapping scale: 0 (no correlation), 1 (low), 2 (medium), 3 (high)"
+      - "11 POs under GAPC v4.0 (not the legacy 12)"
+      - "Attainment = (80% x Direct) + (20% x Indirect)"
+
+  # 15. Evidence Gap Identification Accuracy
+  - id: "gap_identification_accuracy"
+    description: "Gap identification must use the 3-tier verification model from Section 6.3"
+    required_elements_when_gap_mentioned:
+      - "Tier 1 – Verification of Exists: Is the file physically present?"
+      - "Tier 2 – Verification of Completeness: Does it contain signatures and dates?"
+      - "Tier 3 – Verification of Accuracy: Do the numbers match the SAR?"
+
+# ── AUDIT TRAIL ───────────────────────────────────────────────────────────────
+audit:
+  log_guardrail_activations: true
+  log_blocked_queries: true              # Log blocked queries (not the content, only the rule triggered)
+  log_warnings_issued: true
+  privacy_note: "Query content is NOT stored. Only guardrail rule IDs and timestamps are logged."
+
+# ── REFERENCES ────────────────────────────────────────────────────────────────
+references:
+  - "National Board of Accreditation (NBA), General Manual of Accreditation for UG Engineering Programmes (Tier-I & Tier-II), May 2026 Edition, New Delhi. https://www.nbaind.org/"
+  - "International Engineering Alliance (IEA), Graduate Attributes and Professional Competencies Framework v4.0 (WA 2021 Alignment), June 2021."
+  - "NBA eNBA Portal Manual, Pre-Qualifier Guidelines & SAR Format for Tier-I and Tier-II Institutions."
+  - "AICTE Approval Process Handbook (APH), Statutory Norms for Technical Institutions."

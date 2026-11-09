@@ -1,0 +1,223 @@
+# ============================================================
+#  EvidenceGuard AI — Agent Configuration File (.eve)
+#  IBM AICTE Agentic AI Project | NBA Accreditation Assistant
+#  NBA Manual: May 2026 Edition (GAPC v4.0)
+#  Format: YAML-based Agent EVE (Evidence Vector Engine) config
+# ============================================================
+
+agent:
+  name: "EvidenceGuard AI"
+  version: "1.0.0"
+  description: >
+    A RAG-based AI agent for NBA accreditation faculty assistance.
+    Retrieves relevant NBA criteria, SAR formats, CO-PO mapping guidance,
+    and documentation requirements from the official knowledge base.
+    Grounded in the NBA May 2026 Edition / GAPC v4.0.
+  project_type: "agentic_rag"
+  scope: "NBA Accreditation – UG Engineering Programmes (Tier-I and Tier-II)"
+  language: "en"
+  created_by: "IBM AICTE Agentic AI Internship"
+
+# ── IBM Cloud & watsonx.ai Settings ─────────────────────────────────────────
+ibm_cloud:
+  # IBM Cloud Lite account is supported.
+  # Fill in your credentials after creating a free account at:
+  #   https://cloud.ibm.com/registration
+  # Then provision IBM watsonx.ai from:
+  #   https://cloud.ibm.com/catalog/services/watson-machine-learning
+  region: "us-south"                        # e.g. us-south, eu-gb, jp-tok
+  resource_group: "Default"
+  iam_api_key: "${IBM_CLOUD_API_KEY}"       # Set as environment variable
+  project_id: "${WATSONX_PROJECT_ID}"       # Set as environment variable
+
+# ── IBM Granite Model Configuration ─────────────────────────────────────────
+model:
+  provider: "ibm_watsonx_ai"
+  model_id: "ibm/granite-13b-instruct-v2"
+  # Granite alternatives (all available on IBM Cloud Lite watsonx.ai):
+  #   ibm/granite-3-8b-instruct        (8B – fastest, best for Chat)
+  #   ibm/granite-13b-instruct-v2      (13B – balanced accuracy/speed)
+  #   ibm/granite-3-2b-instruct        (2B – lightest, demo/fallback)
+  fallback_mode: "tfidf_local"             # Use built-in TF-IDF if watsonx.ai unavailable
+  watsonx_url: "https://us-south.ml.cloud.ibm.com"
+
+  parameters:
+    decoding_method: "greedy"
+    max_new_tokens: 600
+    min_new_tokens: 50
+    temperature: 0.1                       # Low temperature = more factual, less creative
+    repetition_penalty: 1.1
+    stop_sequences: ["\n\n---", "Human:", "Faculty:"]
+
+  # System prompt injected before every query when using IBM Granite
+  system_prompt: |
+    You are EvidenceGuard AI, an expert NBA accreditation assistant for engineering college faculty.
+    You answer questions ONLY based on the provided context from the NBA Knowledge Base (May 2026 Edition / GAPC v4.0).
+    Rules:
+    1. NEVER invent or fabricate NBA criteria, marks, or requirements.
+    2. ALWAYS cite the source section when giving an answer.
+    3. If the context does not contain the answer, say so clearly.
+    4. Distinguish between Tier-I (Autonomous) and Tier-II (Affiliated) where relevant.
+    5. Never certify or confirm that a college IS accredited or compliant.
+    6. Keep answers structured, accurate, and grounded in provided context only.
+
+# ── RAG Pipeline Configuration ───────────────────────────────────────────────
+rag:
+  pipeline: "retrieve_then_read"
+  retriever:
+    type: "tfidf_cosine"                   # Built-in retriever (no API needed)
+    # For IBM watsonx Discovery (paid), change type to "watsonx_discovery"
+    top_k: 3                               # Number of chunks to retrieve
+    min_relevance_score: 0.01              # Minimum cosine similarity threshold
+    rerank: false                          # Enable reranking if using watsonx.ai Rerank
+
+  chunking:
+    strategy: "pre_chunked"               # Knowledge base is pre-chunked in nba_knowledge_base.py
+    chunk_size_words: 200
+    chunk_overlap_words: 20
+    metadata_fields:
+      - id
+      - section
+      - title
+      - source
+      - criteria
+
+  embeddings:
+    # Local: TF-IDF (default, no API needed)
+    # Cloud: IBM watsonx.ai text-embedding (optional upgrade)
+    type: "tfidf_local"
+    # To enable IBM watsonx.ai embeddings, change to:
+    #   type: "ibm_watsonx_embedding"
+    #   model_id: "ibm/slate-125m-english-rtrvr"
+
+  knowledge_base:
+    source_file: "knowledge_base/nba_knowledge_base.py"
+    pdf_source: "EvidenceGuard AI - NBA Knowledge Base.pdf"
+    total_chunks: 25
+    version: "NBA May 2026 Edition / GAPC v4.0"
+    last_updated: "2026-05"
+    coverage:
+      - "Section 1: NBA Introduction & Governance"
+      - "Section 2: Tier-I vs Tier-II Framework"
+      - "Section 3: 10 Criteria (1000 Marks)"
+      - "Section 4: Complete Documentation Checklist"
+      - "Section 5: Criterion-Wise Evidence Mapping"
+      - "Section 6: SAR Preparation Guide"
+      - "Section 7: CO-PO Mapping & Attainment (GAPC v4.0)"
+      - "Section 8: Internal Audit Protocols"
+      - "Section 9: Common Accreditation Errors"
+      - "Section 10: Glossary"
+      - "Section 11: 25 Faculty FAQs"
+
+# ── Agent Capabilities ────────────────────────────────────────────────────────
+capabilities:
+  - id: "nba_criteria_assistance"
+    name: "NBA Accreditation Criteria Assistance"
+    description: "Explains all 10 NBA criteria, marks distribution, Tier-I vs Tier-II differences"
+    trigger_keywords: ["criteria", "criterion", "marks", "score", "points", "tier"]
+
+  - id: "sar_preparation"
+    name: "SAR Preparation Guidance"
+    description: "Step-by-step Self-Assessment Report authoring workflow and consistency rules"
+    trigger_keywords: ["sar", "self assessment", "report", "prepare", "submit", "authoring"]
+
+  - id: "copo_mapping"
+    name: "CO-PO Mapping Assistance"
+    description: "CO-PO mapping scale, 11 POs under GAPC v4.0, attainment calculation formula"
+    trigger_keywords: ["co-po", "copo", "mapping", "attainment", "program outcome", "course outcome", "po", "co"]
+
+  - id: "documentation_guidance"
+    name: "NBA Documentation & Evidence Guidance"
+    description: "Lists required documents per criterion, formats, custodians, and common audit mistakes"
+    trigger_keywords: ["document", "evidence", "file", "record", "proof", "checklist"]
+
+  - id: "evidence_gap_identification"
+    name: "Evidence Gap Identification"
+    description: "Identifies missing evidence using 3-tier gap model: Exists, Completeness, Accuracy"
+    trigger_keywords: ["missing", "gap", "incomplete", "lack", "absent", "deficiency"]
+
+  - id: "faculty_qa"
+    name: "Context-Aware Faculty Q&A"
+    description: "Answers 25+ practical faculty FAQs grounded in NBA knowledge base"
+    trigger_keywords: ["how", "what", "when", "can", "should", "minimum", "maximum", "required"]
+
+  - id: "audit_compliance"
+    name: "Internal Audit & Compliance"
+    description: "Internal audit workflow, corrective action plans, error prevention"
+    trigger_keywords: ["audit", "compliance", "corrective", "action", "atr", "inspection"]
+
+  - id: "glossary_lookup"
+    name: "NBA Terminology Lookup"
+    description: "Explains NBA-specific abbreviations: SAR, OBE, GAPC, PEO, PO, CO, PSO, SFR, CAY"
+    trigger_keywords: ["what is", "define", "mean", "abbreviation", "full form", "term"]
+
+# ── Guardrails Reference ──────────────────────────────────────────────────────
+guardrails:
+  config_file: "guardrails_config.yaml"
+  enforcement: "mandatory"               # All guardrails are non-bypassable
+  input_guardrails_enabled: true
+  output_guardrails_enabled: true
+
+# ── Tools & Integrations ──────────────────────────────────────────────────────
+tools:
+  - id: "rag_retriever"
+    type: "retrieval"
+    description: "TF-IDF cosine similarity retriever over NBA knowledge chunks"
+    module: "backend.rag_engine"
+    function: "query_knowledge_base"
+    enabled: true
+
+  - id: "evidence_reviewer"
+    type: "analysis"
+    description: "Criterion-specific evidence gap analysis tool"
+    module: "backend.app"
+    endpoint: "/api/evidence-review"
+    enabled: true
+
+  - id: "criteria_lookup"
+    type: "reference"
+    description: "Returns the full 10-criteria marks table for Tier-I and Tier-II"
+    module: "backend.app"
+    endpoint: "/api/criteria"
+    enabled: true
+
+  # Optional: IBM watsonx.ai LLM augmentation (requires credentials)
+  - id: "granite_llm"
+    type: "language_model"
+    description: "IBM Granite 13B Instruct for enhanced natural language generation"
+    module: "backend.ibm_granite_engine"
+    function: "generate_response"
+    enabled: false                        # Set to true after configuring IBM Cloud credentials
+    requires:
+      - "IBM_CLOUD_API_KEY"
+      - "WATSONX_PROJECT_ID"
+
+# ── Execution Settings ────────────────────────────────────────────────────────
+execution:
+  server:
+    host: "0.0.0.0"
+    port: 5000
+    debug: true                           # Set to false in production
+  api_base: "http://127.0.0.1:5000"
+  max_query_length: 2000
+  min_query_length: 5
+  response_timeout_seconds: 30
+  max_retrieved_chunks: 5
+  default_retrieved_chunks: 3
+
+# ── Logging & Monitoring ──────────────────────────────────────────────────────
+logging:
+  level: "INFO"
+  log_queries: false                      # Do not log user queries (privacy)
+  log_responses: false
+  log_guardrail_blocks: true
+  log_file: "logs/evidenceguard.log"
+
+# ── Disclaimer & Legal ────────────────────────────────────────────────────────
+disclaimer:
+  mandatory: true
+  text: >
+    EvidenceGuard AI is an AI assistance tool and NOT an official NBA body.
+    Answers are grounded in the EvidenceGuard AI NBA Knowledge Base (May 2026 Edition / GAPC v4.0).
+    Always verify requirements against the official NBA SAR manual at https://www.nbaind.org/
+    Only the official NBA Peer Team and EAC can determine accreditation status.

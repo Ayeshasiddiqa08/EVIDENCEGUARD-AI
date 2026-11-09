@@ -1,0 +1,27 @@
+# EvidenceGuard AI – Python Dependencies
+# Install with: pip install -r requirements.txt
+#
+# IBM Technology (mandatory per project specification):
+#   IBM Cloud Lite + IBM watsonx.ai + IBM Granite
+#
+# CORE (always required – no IBM credentials needed for local TF-IDF mode)
+flask==3.0.3
+flask-cors==4.0.1
+
+# IBM WATSONX.AI SDK (optional – enables IBM Granite LLM augmentation)
+# Install this to connect EvidenceGuard AI to IBM Granite foundation model.
+# After installing, set these environment variables:
+#   IBM_CLOUD_API_KEY    = <your IBM Cloud API key>
+#   WATSONX_PROJECT_ID   = <your watsonx.ai project ID>
+#   WATSONX_URL          = https://us-south.ml.cloud.ibm.com
+#
+# To install IBM SDK: pip install ibm-watsonx-ai
+#
+# ibm-watsonx-ai>=1.0.0
+
+# DOCUMENT PROCESSING (optional – for ingesting additional NBA PDF documents)
+# PyPDF2>=3.0.1
+# pdfplumber>=0.10.0
+
+# YAML CONFIG SUPPORT (optional – for loading guardrails_config.yaml at runtime)
+# pyyaml>=6.0.1
